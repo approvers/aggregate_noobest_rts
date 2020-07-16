@@ -17,7 +17,8 @@ const NOOBEST_TWITTER_ID: u64 = 1122912368021737472;
 async fn main() {
     simple_logger::init_with_level(log::Level::Info).unwrap();
 
-    let db = MongoDB::new("mongodb://localhost").await.unwrap();
+    let db_url = std::env::var("MONGO_URL").expect("set MONGO_URL");
+    let db = MongoDB::new(&db_url).await.unwrap();
 
     noobest_check_routine(Arc::new(RwLock::new(db)))
         .await

@@ -1,11 +1,9 @@
 #[macro_export]
 macro_rules! make_error_enum {
     ($enum_name:ident; $($variant:ident $func_name:ident($($($vars:ident),+ $(,)?)?) => $format:expr),+ $(,)?) => {
-        #[derive(Debug, thiserror::Error)]
+        #[derive(Debug)]
         pub enum $enum_name {
-            $(
-                $variant(String),
-            )+
+            $($variant(String),)+
         }
 
         impl $enum_name {
