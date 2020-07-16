@@ -1,32 +1,64 @@
+use async_trait::async_trait;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::error::Error;
+use std::fmt::Display;
+
+pub mod mongo;
+
+#[async_trait]
 pub trait Database {
-    type DBError: std::fmt::Display;
+    type Error: Display + Error;
 
-    fn new_entry(&mut self, _: NoobestRetweet) -> Result<(), Self::DBError>;
+    async fn contains_rt(&self, _: StatusID) -> Result<bool, Self::Error>;
+    async fn contains_author(&self, _: UserID) -> Result<bool, Self::Error>;
 
-    fn entry_iter(&self) -> std::slice::Iter<'_, NoobestRetweet>;
+    async fn get_author(&self, _: UserID) -> Result<TweetAuthor, Self::Error>;
+
+    async fn save_retweet(&self, _: LocalRetweet) -> Result<Retweet, Self::Error>;
+    async fn save_author(&self, _: LocalTweetAuthor) -> Result<TweetAuthor, Self::Error>;
+
+    async fn update_author(
+        &self,
+        author_id: DBID,
+        screen_name: &str,
+        name: &str,
+    ) -> Result<(), Self::Error>;
 }
 
-pub struct NoobestRetweet {
-    // リツイートされた時間
-    pub time: chrono::DateTime<chrono::Utc>,
+#[derive(Serialize, Deserialize)]
+pub struct UserID(pub u64);
 
-    // 作者
-    pub author: NoobestRetweetedAuthor,
+#[derive(Serialize, Deserialize)]
+pub struct StatusID(pub u64);
 
-    // リツイートへのURL
-    pub URL: String,
+#[derive(Serialize, Deserialize)]
+pub struct DBID(pub String);
+
+#[derive(Deserialize)]
+pub struct Retweet {
+    pub id: DBID,
+    pub time: DateTime<Utc>,
+    pub author: DBID,
+    pub twitter_id: StatusID,
 }
 
-pub struct NoobestRetweetedAuthor {
-    // 作者の名前
+#[derive(Deserialize)]
+pub struct TweetAuthor {
+    pub id: DBID,
+    pub screen_name: String,
     pub name: String,
+    pub twitter_id: UserID,
+}
 
-    // 作者のID
-    pub id: String,
+pub struct LocalRetweet {
+    pub time: DateTime<Utc>,
+    pub author: DBID,
+    pub twitter_id: StatusID,
+}
 
-    // 作者ユーザーページへのURL
-    pub URL: String,
-
-    // ぬーべすとがフォローしているか
-    pub is_noobest_follows: bool,
+pub struct LocalTweetAuthor {
+    pub screen_name: String,
+    pub name: String,
+    pub twitter_id: UserID,
 }

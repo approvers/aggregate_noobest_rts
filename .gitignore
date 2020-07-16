@@ -1,2 +1,4 @@
 /target
 responce.txt
+docker/.env
+.vscode

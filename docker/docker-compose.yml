@@ -1,0 +1,14 @@
+version: "3"
+
+services:
+  rust:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    container_name: "aggregate_noobest_rust"
+    env_file: .env
+
+  mongo:
+    image: mongo
+    ports:
+      - 27017:27017
