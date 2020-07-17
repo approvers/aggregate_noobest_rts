@@ -13,8 +13,16 @@ use tokio::time::delay_for;
 
 const NOOBEST_TWITTER_ID: u64 = 1122912368021737472;
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    tokio::runtime::Builder::new()
+        .enable_all()
+        .basic_scheduler() // single threaded
+        .build()
+        .unwrap()
+        .block_on(async_main())
+}
+
+async fn async_main() {
     simple_logger::init_with_level(log::Level::Info).unwrap();
 
     let db_url = std::env::var("MONGO_URL").expect("set MONGO_URL");

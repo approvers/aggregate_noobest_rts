@@ -8,7 +8,7 @@ use mongodb::Client;
 use mongodb::Collection;
 use structs::*;
 use thiserror::Error;
-use tokio::stream::StreamExt;
+
 
 pub struct MongoDB {
     rt_collection: Collection,
@@ -76,86 +76,40 @@ impl Database for MongoDB {
     async fn contains_rt(&self, status_id: StatusID) -> Result<bool, Self::Error> {
         let status_id = MongoStatusID::from(status_id);
 
-        let aggregate_result = self
-            .author_collection
-            .aggregate(
-                vec![
-                    doc! {"$match": doc! { "twitter_id": status_id.0 }  },
-                    doc! {"$count": "count"},
-                ],
-                None,
-            )
+        let result = self
+            .rt_collection
+            .find_one(doc! { "twitter_id": status_id.0 }, None)
             .await
-            .map_err(|e| MongoDBError::Request(e))?
-            .next()
-            .await
-            .unwrap_or_else(|| Ok(doc! {"count": 0}))
-            .map_err(|e| MongoDBError::Request(e))?;
+            .map_err(|x| MongoDBError::Request(x))?
+            .is_some();
 
-        match aggregate_result
-            .get_i32("count")
-            .map_err(|_| MongoDBError::NotFound)?
-        {
-            0 => Ok(false),
-            1 => Ok(true),
-            _ => Err(MongoDBError::InvalidEntry(
-                "同じTweetIDを持つエントリが複数あります",
-            )),
-        }
+        Ok(result)
     }
 
     async fn contains_author(&self, user_id: UserID) -> Result<bool, Self::Error> {
         let user_id = MongoUserID::from(user_id);
 
-        let aggregate_result = self
+        let result = self
             .author_collection
-            .aggregate(
-                vec![
-                    doc! {"$match": doc! { "twitter_id": user_id.0 }  },
-                    doc! {"$count": "count"},
-                ],
-                None,
-            )
+            .find_one(doc! { "twitter_id": user_id.0 }, None)
             .await
-            .map_err(|e| MongoDBError::Request(e))?
-            .next()
-            .await
-            .unwrap_or_else(|| Ok(doc! {"count": 0}))
-            .map_err(|e| MongoDBError::Request(e))?;
+            .map_err(|x| MongoDBError::Request(x))?
+            .is_some();
 
-        match aggregate_result
-            .get_i32("count")
-            .map_err(|_| MongoDBError::NotFound)?
-        {
-            0 => Ok(false),
-            1 => Ok(true),
-            _ => Err(MongoDBError::InvalidEntry(
-                "同じAuthorIDを持つエントリが複数あります",
-            )),
-        }
+        Ok(result)
     }
 
     async fn get_author(&self, user_id: UserID) -> Result<TweetAuthor, Self::Error> {
         let user_id = MongoUserID::from(user_id);
 
-        let aggregate_result = self
+        let find_result = self
             .author_collection
-            .aggregate(
-                vec![doc! {
-                    "$match": doc! {
-                        "twitter_id": user_id.0
-                    }
-                }],
-                None,
-            )
+            .find_one(doc! { "twitter_id": user_id.0 }, None)
             .await
-            .map_err(|e| MongoDBError::Request(e))?
-            .next()
-            .await
-            .ok_or(MongoDBError::NotFound)?
-            .map_err(|e| MongoDBError::Request(e))?;
+            .map_err(|x| MongoDBError::Request(x))?
+            .ok_or_else(|| MongoDBError::NotFound)?;
 
-        let bson = Bson::Document(aggregate_result);
+        let bson = Bson::Document(find_result);
         let author =
             bson::from_bson::<MongoTweetAuthor>(bson).map_err(|e| MongoDBError::Deserialize(e))?;
 
